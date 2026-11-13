@@ -372,6 +372,37 @@ write(path.join(OUT, 'js', 'demo-boot.js'), `/* MemoVida · Arranque de la demo 
   };
   window.EventSource = DemoEventSource;
 
+  /* ── Imágenes: \"\/img\/x\" → \"img\/x\" ──
+     GitHub Pages sirve la app en /memovida/, así que una ruta absoluta
+     apunta fuera del proyecto. Lo corregimos también en tiempo de ejecución
+     para que un HTML o JS cacheado por el navegador no rompa las fotos. */
+  function fixImg(root) {
+    if (!root || !root.querySelectorAll) return;
+    var imgs = root.querySelectorAll('img[src^="/img/"]');
+    for (var i = 0; i < imgs.length; i++) {
+      imgs[i].setAttribute('src', imgs[i].getAttribute('src').replace(/^\\/img\\//, 'img/'));
+    }
+    var icons = root.querySelectorAll('link[href^="/img/"]');
+    for (var j = 0; j < icons.length; j++) {
+      icons[j].setAttribute('href', icons[j].getAttribute('href').replace(/^\\/img\\//, 'img/'));
+    }
+  }
+  fixImg(document);
+  document.addEventListener('DOMContentLoaded', function () { fixImg(document); });
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var added = records[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (n.nodeType !== 1) continue;
+          if (n.tagName === 'IMG' && /^\\/img\\//.test(n.getAttribute('src') || '')) fixImg(n.parentNode || document);
+          else if (n.querySelector && n.querySelector('img[src^="/img/"]')) fixImg(n);
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   /* ── Descarga de CSV (enlace <a download> hacia /api/...) ── */
   document.addEventListener('click', function (e) {
     var el = e.target;
@@ -421,7 +452,7 @@ write(path.join(OUT, 'manifest.webmanifest'), manifest);
 
 /* ─────────────── 8. Service worker relativo ─────────────── */
 write(path.join(OUT, 'sw.js'), `/* MemoVida · Service worker de la demo estática (caché de estáticos) */
-const CACHE = 'memovida-demo-v3';
+const CACHE = 'memovida-demo-v4';
 const ASSETS = ['./', './index.html', './css/styles.css', './js/app.js',
   './js/demo-boot.js', './img/logo.svg', './manifest.webmanifest'];
 
@@ -458,7 +489,7 @@ write(appJsPath, appJs);
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) { relativeImages(p); continue; }
-    if (!e.name.endsWith('.js')) continue;
+    if (!e.name.endsWith('.js') || e.name === 'demo-boot.js') continue;
     const before = read(p);
     const after = before.replace(/(['"`])\/img\//g, '$1img/');
     if (after !== before) write(p, after);

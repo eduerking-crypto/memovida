@@ -83,6 +83,37 @@
   };
   window.EventSource = DemoEventSource;
 
+  /* ── Imágenes: "/img/x" → "img/x" ──
+     GitHub Pages sirve la app en /memovida/, así que una ruta absoluta
+     apunta fuera del proyecto. Lo corregimos también en tiempo de ejecución
+     para que un HTML o JS cacheado por el navegador no rompa las fotos. */
+  function fixImg(root) {
+    if (!root || !root.querySelectorAll) return;
+    var imgs = root.querySelectorAll('img[src^="/img/"]');
+    for (var i = 0; i < imgs.length; i++) {
+      imgs[i].setAttribute('src', imgs[i].getAttribute('src').replace(/^\/img\//, 'img/'));
+    }
+    var icons = root.querySelectorAll('link[href^="/img/"]');
+    for (var j = 0; j < icons.length; j++) {
+      icons[j].setAttribute('href', icons[j].getAttribute('href').replace(/^\/img\//, 'img/'));
+    }
+  }
+  fixImg(document);
+  document.addEventListener('DOMContentLoaded', function () { fixImg(document); });
+  if (window.MutationObserver) {
+    new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var added = records[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (n.nodeType !== 1) continue;
+          if (n.tagName === 'IMG' && /^\/img\//.test(n.getAttribute('src') || '')) fixImg(n.parentNode || document);
+          else if (n.querySelector && n.querySelector('img[src^="/img/"]')) fixImg(n);
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   /* ── Descarga de CSV (enlace <a download> hacia /api/...) ── */
   document.addEventListener('click', function (e) {
     var el = e.target;
