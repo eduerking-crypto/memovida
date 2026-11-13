@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+
+# Base de datos local (se recrea con datos demo al arrancar)
+data/db.json
+data/db.json.tmp
+data/db.json.corrupto-*
+
+# Compilación / artefactos
+build/
+dist/
+android/.gradle/
+android/app/build/
+android/build/
+android/assets/public/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.idsig
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
