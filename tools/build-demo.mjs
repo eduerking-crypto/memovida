@@ -421,7 +421,7 @@ write(path.join(OUT, 'manifest.webmanifest'), manifest);
 
 /* ─────────────── 8. Service worker relativo ─────────────── */
 write(path.join(OUT, 'sw.js'), `/* MemoVida · Service worker de la demo estática (caché de estáticos) */
-const CACHE = 'memovida-demo-v2';
+const CACHE = 'memovida-demo-v3';
 const ASSETS = ['./', './index.html', './css/styles.css', './js/app.js',
   './js/demo-boot.js', './img/logo.svg', './manifest.webmanifest'];
 
