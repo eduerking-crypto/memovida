@@ -184,7 +184,7 @@ function patientShell() {
   return h('div', { class: 'shell' },
     h('header', { class: 'topbar' },
       h('div', { class: 'brand' },
-        h('img', { src: '/img/logo.svg', alt: '', width: 38, height: 38 }),
+        h('img', { src: 'img/logo.svg', alt: '', width: 38, height: 38 }),
         h('span', {}, 'MemoVida')
       ),
       h('div', { class: 'clock' }, time, date),
@@ -220,7 +220,7 @@ function careShell() {
 
   return h('div', { class: 'care-shell' },
     h('aside', { class: 'sidebar' },
-      h('div', { class: 'brand' }, h('img', { src: '/img/logo.svg', alt: '', width: 34, height: 34 }), h('span', {}, 'MemoVida')),
+      h('div', { class: 'brand' }, h('img', { src: 'img/logo.svg', alt: '', width: 34, height: 34 }), h('span', {}, 'MemoVida')),
       h('nav', { 'aria-label': 'Secciones del cuidador', class: 'stack', style: { gap: '.15rem' } }, links),
       h('div', { class: 'side-foot' },
         h('div', {}, store.state.user?.name || ''),
@@ -354,7 +354,7 @@ function wireEvents() {
 function notify(title, body) {
   try {
     if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') new Notification(title, { body, icon: '/img/logo.svg' });
+    if (Notification.permission === 'granted') new Notification(title, { body, icon: 'img/logo.svg' });
     else if (Notification.permission !== 'denied') Notification.requestPermission();
   } catch { /* opcional */ }
 }

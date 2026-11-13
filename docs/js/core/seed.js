@@ -31,7 +31,7 @@ export function seed() {
   const p = insert('patients', {
     userId: rosa.id,
     name: 'Rosa Martínez', preferredName: 'Rosa',
-    birthDate: '1948-03-12', photo: '/img/rosa.jpg',
+    birthDate: '1948-03-12', photo: 'img/rosa.jpg',
     phone: '+34 600 123 456', address: 'Calle del Olivo 12, 3ºB · Madrid',
     bloodType: 'A+', allergies: 'Penicilina',
     conditions: 'Alzheimer fase leve-moderada (diagnóstico 2023) · Hipertensión',
@@ -52,21 +52,21 @@ export function seed() {
 
   /* ---------- personas ---------- */
   const people = [
-    { name: 'Ana', relation: 'Tu hija', phone: '+34 611 222 333', photo: '/img/ana.jpg', description: 'Vive cerca y viene a verte cada tarde a las cinco.', memory: 'Ana te llama todos los domingos por la mañana.' },
-    { name: 'Lucas', relation: 'Tu nieto', phone: '+34 622 333 444', photo: '/img/lucas.jpg', description: 'Estudia informática. Le encanta tu tortilla de patatas.', memory: 'Le enseñaste a montar en bici en el parque.' },
-    { name: 'Carmen', relation: 'Tu vecina y amiga', phone: '+34 633 444 555', photo: '/img/carmen.jpg', description: 'Vive en el 3ºA. Paseáis juntas los lunes, miércoles y viernes.', memory: 'Os conocéis desde 1985.' },
-    { name: 'Nala', relation: 'Tu perra', phone: '', photo: '/img/nala.jpg', description: 'Golden retriever muy tranquila. Duerme a tus pies.', memory: 'Llegó a casa en 2019.' }
+    { name: 'Ana', relation: 'Tu hija', phone: '+34 611 222 333', photo: 'img/ana.jpg', description: 'Vive cerca y viene a verte cada tarde a las cinco.', memory: 'Ana te llama todos los domingos por la mañana.' },
+    { name: 'Lucas', relation: 'Tu nieto', phone: '+34 622 333 444', photo: 'img/lucas.jpg', description: 'Estudia informática. Le encanta tu tortilla de patatas.', memory: 'Le enseñaste a montar en bici en el parque.' },
+    { name: 'Carmen', relation: 'Tu vecina y amiga', phone: '+34 633 444 555', photo: 'img/carmen.jpg', description: 'Vive en el 3ºA. Paseáis juntas los lunes, miércoles y viernes.', memory: 'Os conocéis desde 1985.' },
+    { name: 'Nala', relation: 'Tu perra', phone: '', photo: 'img/nala.jpg', description: 'Golden retriever muy tranquila. Duerme a tus pies.', memory: 'Llegó a casa en 2019.' }
   ];
   people.forEach(x => insert('people', { patientId: p.id, ...x }));
 
   /* ---------- recuerdos ---------- */
   [
     { title: 'Mi boda con Manuel', year: 1971, place: 'Segovia', description: 'Nos casamos en primavera. Llevé un vestido que cosió mi madre y bailamos pasodobles hasta la madrugada.', photo: '', tags: ['familia', 'fiesta'] },
-    { title: 'Nació mi hija Ana', year: 1975, place: 'Madrid', description: 'Una niña de pelo negro que lloraba muy fuerte. Manuel no paraba de sonreír.', photo: '/img/ana.jpg', tags: ['familia'] },
+    { title: 'Nació mi hija Ana', year: 1975, place: 'Madrid', description: 'Una niña de pelo negro que lloraba muy fuerte. Manuel no paraba de sonreír.', photo: 'img/ana.jpg', tags: ['familia'] },
     { title: 'La casa de la playa', year: 1988, place: 'Valencia', description: 'Todos los veranos con los niños. Yo hacía paella los domingos para doce personas.', photo: '', tags: ['verano', 'viajes'] },
-    { title: 'Nació mi nieto Lucas', year: 2004, place: 'Madrid', description: 'Lo tuve en brazos el primer día. Le cantaba la misma nana que a su madre.', photo: '/img/lucas.jpg', tags: ['familia'] },
+    { title: 'Nació mi nieto Lucas', year: 2004, place: 'Madrid', description: 'Lo tuve en brazos el primer día. Le cantaba la misma nana que a su madre.', photo: 'img/lucas.jpg', tags: ['familia'] },
     { title: 'Mi jubilación', year: 2010, place: 'Colegio San Juan', description: 'Treinta años enseñando a leer a niños de seis. Me regalaron un álbum con dibujos de todos.', photo: '', tags: ['trabajo'] },
-    { title: 'Llegó Nala a casa', year: 2019, place: 'Madrid', description: 'Una bola de pelo dorada que se durmió en mi regazo el primer día.', photo: '/img/nala.jpg', tags: ['mascota'] }
+    { title: 'Llegó Nala a casa', year: 2019, place: 'Madrid', description: 'Una bola de pelo dorada que se durmió en mi regazo el primer día.', photo: 'img/nala.jpg', tags: ['mascota'] }
   ].forEach(x => insert('memories', { patientId: p.id, ...x }));
 
   /* ---------- recordatorios ---------- */

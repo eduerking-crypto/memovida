@@ -101,7 +101,7 @@ export function renderAuth(onDone) {
 
   return h('div', { class: 'auth-wrap' },
     h('section', { class: 'auth-hero' },
-      h('div', { class: 'logo-row' }, h('img', { src: '/img/logo.svg', alt: '', width: 46, height: 46 }), 'MemoVida'),
+      h('div', { class: 'logo-row' }, h('img', { src: 'img/logo.svg', alt: '', width: 46, height: 46 }), 'MemoVida'),
       h('h1', {}, 'Recordar lo importante, cada día.'),
       h('p', {}, 'Un acompañante digital para personas con Alzheimer y para quienes las cuidan. Sencillo de usar, con voz, sin prisas y sin errores que frustren.'),
       h('ul', {},

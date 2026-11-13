@@ -452,6 +452,19 @@ let appJs = read(appJsPath);
 appJs = appJs.replace("navigator.serviceWorker.register('/sw.js')", "navigator.serviceWorker.register('./sw.js')");
 write(appJsPath, appJs);
 
+/* ─────────────── 9b. Rutas de imágenes relativas ─────────────── */
+/* GitHub Pages sirve la app en /memovida/, así que "/img/x.jpg" no existe. */
+(function relativeImages(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { relativeImages(p); continue; }
+    if (!e.name.endsWith('.js')) continue;
+    const before = read(p);
+    const after = before.replace(/(['"`])\/img\//g, '$1img/');
+    if (after !== before) write(p, after);
+  }
+})(path.join(OUT, 'js'));
+
 /* ─────────────── 10. Extras ─────────────── */
 write(path.join(OUT, '.nojekyll'), '');
 write(path.join(OUT, '404.html'), `<!DOCTYPE html><html lang="es"><meta charset="utf-8">
