@@ -31,9 +31,12 @@ export function hub() {
   const scores = D().games || [];
   return frag(
     h('div', { class: 'page-head' },
-      h('button', { class: 'btn', onClick: () => go('#/') }, '⬅️ Inicio'),
+      h('button', { class: 'btn btn--ghost page-back', onClick: () => go('#/'), 'aria-label': 'Volver al inicio' },
+        h('span', { 'aria-hidden': 'true' }, '←'), h('span', {}, 'Inicio')),
       h('h1', { class: 'page-title' }, 'Ejercitar la mente'),
-      h('button', { class: 'btn btn--soft', onClick: () => speak('Elige un juego. No hay prisa y puedes intentarlo tantas veces como quieras.', { force: true }) }, '🔊 Escuchar')
+      h('div', { class: 'page-head-actions' },
+        h('button', { class: 'btn btn--soft', onClick: () => speak('Elige un juego. No hay prisa y puedes intentarlo tantas veces como quieras.', { force: true }) }, '🔊 Escuchar')
+      )
     ),
     h('p', { class: 'muted', style: { fontSize: '1.05rem' } }, 'Elige uno. No hay prisa, no se pierde nada y puedes repetir cuando quieras.'),
     h('div', { class: 'games-grid' }, Object.entries(GAME_META).map(([key, g]) => {

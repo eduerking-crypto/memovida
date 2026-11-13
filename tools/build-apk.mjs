@@ -22,7 +22,7 @@ const WORK = path.join(BUILD, 'apk');
 
 const MIN_SDK = 24;
 const TARGET_SDK = 35;
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const APP_ID = 'app.memovida';
 
 /* ───────────────────────── utilidades ───────────────────────── */

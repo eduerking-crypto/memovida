@@ -18,12 +18,28 @@ const refreshView = () => store.refresh().then(() => import('../app.js').then(m 
 /* ── Cabecera de página ── */
 function head(title, { lectura = '', extra = null } = {}) {
   return h('div', { class: 'page-head' },
-    h('button', { class: 'btn', onClick: () => go('#/'), 'aria-label': 'Volver al inicio' }, '⬅️ Inicio'),
+    h('button', { class: 'btn btn--ghost page-back', onClick: () => go('#/'), 'aria-label': 'Volver al inicio' },
+      h('span', { 'aria-hidden': 'true' }, '←'), h('span', {}, 'Inicio')),
     h('h1', { class: 'page-title' }, title),
-    lectura ? h('button', { class: 'btn btn--soft', onClick: () => speak(lectura, { force: true }) }, '🔊 Escuchar') : null,
-    extra
+    h('div', { class: 'page-head-actions' },
+      lectura ? h('button', { class: 'btn btn--soft', onClick: () => speak(lectura, { force: true }) }, '🔊 Escuchar') : null,
+      extra
+    )
   );
 }
+
+/* ── Piezas compartidas ── */
+const sectionHead = (title, sub) => h('div', { class: 'section-head' },
+  h('h2', { class: 'section-title' }, title),
+  sub ? h('p', { class: 'section-sub' }, sub) : null
+);
+
+const emptyState = (icon, title, text, action = null) => h('div', { class: 'empty' },
+  h('div', { class: 'empty-ico', 'aria-hidden': 'true' }, icon),
+  h('b', { class: 'empty-title' }, title),
+  text ? h('p', { class: 'empty-text' }, text) : null,
+  action
+);
 
 const MOODS = [
   { v: 1, face: '😢', label: 'Muy mal' },
@@ -33,11 +49,12 @@ const MOODS = [
   { v: 5, face: '😄', label: 'Muy bien' }
 ];
 
-/* ═════════ 1 · INICIO ═════════ */
+/* ═════════ 1 · INICIO ═════════
+   Jerarquía clara: primero «dónde estoy y qué toca», después las tarjetas. */
 export function inicio() {
   const p = P(), d = D();
   const nombre = p.preferredName || p.name?.split(' ')[0] || '';
-  const pendientes = (d.due || []).length;
+  const pendientes = d.due || [];
   const pct = d.stats?.routinePct ?? 0;
   const moodHoy = (d.moods || []).find(m => m.date === d.today);
 
@@ -57,58 +74,91 @@ export function inicio() {
     .filter(x => x.t > hora())
     .sort((a, b) => a.t.localeCompare(b.t))[0];
 
+  /* Reloj vivo del saludo */
+  const reloj = h('div', { class: 'p-hero-time' }, hora());
+  const fecha = h('p', { class: 'p-hero-date' }, fechaLarga());
+  const parte = h('p', { class: 'p-hero-part' }, `Es ${parteDelDia()} · ${horaEnPalabras()}`);
+  addTicker(() => {
+    reloj.textContent = hora();
+    fecha.textContent = fechaLarga();
+    parte.textContent = `Es ${parteDelDia()} · ${horaEnPalabras()}`;
+  });
+
+  const vozHero = () => speak(
+    `${saludo()} ${nombre}. Hoy es ${fechaLarga()}. Son ${horaEnPalabras()}. ` +
+    (pendientes.length ? `Tienes ${pendientes.length} avisos pendientes.` : 'No tienes avisos pendientes.') +
+    (proximo ? ` Lo próximo es ${proximo.r.title} a las ${proximo.t}.` : '') +
+    ` ${p.anchorPhrase || ''}`, { force: true });
+
   return frag(
-    h('p', { class: 'greet' },
-      h('span', {}, `${saludo()}, ${nombre} 👋`),
-      h('small', {}, `${fechaLarga()} · ${horaEnPalabras()}`)
-    ),
-
-    pendientes
-      ? h('div', { class: 'card', style: { marginBottom: '1rem', borderColor: 'var(--accent)', borderWidth: '3px' } },
-        h('div', { class: 'card-body between' },
-          h('div', {},
-            h('b', { style: { fontSize: '1.2rem' } }, `🔔 Tienes ${pendientes} ${pendientes === 1 ? 'aviso pendiente' : 'avisos pendientes'}`),
-            h('div', { class: 'muted' }, d.due[0].title + ' · ' + d.due[0].time)
-          ),
-          h('button', { class: 'btn btn--primary btn--lg', onClick: () => showReminder(d.due[0]) }, 'Ver el aviso')
-        ))
-      : null,
-
-    h('div', { class: 'tiles' },
-      tile('🕒', '¿Qué día es?', 'La fecha, la hora y dónde estás', '#/orientacion', { brand: true }),
-      tile('💊', 'Mis medicinas', 'Lo que toca hoy', '#/medicacion', { alert: pendientes > 0, badge: pendientes ? `${pendientes} pendiente${pendientes > 1 ? 's' : ''}` : null }),
-      tile('👨‍👩‍👧', '¿Quién es quién?', 'Tu familia y tus amigos', '#/personas'),
-      tile('📖', 'Mis recuerdos', 'Fotos e historias de tu vida', '#/recuerdos'),
-      tile('✅', 'Mi día', pct ? `${pct}% completado` : 'Tu rutina paso a paso', '#/rutina'),
-      tile('🧠', 'Ejercitar la mente', 'Seis juegos tranquilos', '#/juegos'),
-      tile('🌬️', 'Calmarme', 'Respirar despacio y tranquilo', '#/calma'),
-      tile('🙂', '¿Cómo me siento?', moodHoy ? 'Ya lo has contado hoy' : 'Cuéntaselo a tu familia', '#/animo')
-    ),
-
-    h('div', { class: 'card', style: { marginTop: '1.2rem' } },
-      h('div', { class: 'card-body stack' },
-        h('div', { class: 'between' },
-          h('b', { style: { fontSize: '1.15rem' } }, '🧭 Para orientarte'),
-          h('button', { class: 'btn btn--soft', onClick: () => speak(`${saludo()} ${nombre}. Hoy es ${fechaLarga()}. Son ${horaEnPalabras()}. ${p.anchorPhrase || ''}`, { force: true }) }, '🔊 Escuchar')
+    h('section', { class: 'p-hero' },
+      h('div', { class: 'p-hero-main' },
+        h('p', { class: 'p-hero-hi' }, `${saludo()}, ${nombre}`),
+        reloj, fecha, parte
+      ),
+      h('div', { class: 'p-hero-side' },
+        h('div', { class: 'p-next' + (proximo ? '' : ' p-next--ok') },
+          h('span', { class: 'p-next-label' }, proximo ? '🔔 Lo próximo' : '✅ Sin avisos'),
+          proximo
+            ? frag(h('b', {}, proximo.r.title), h('span', {}, `A las ${proximo.t}`))
+            : h('b', {}, 'Nada pendiente por ahora')
         ),
-        h('p', { style: { margin: 0, fontSize: '1.15rem' } }, p.anchorPhrase || 'Estás en tu casa. Estás a salvo.'),
-        proximo
-          ? h('p', { class: 'muted', style: { margin: 0 } }, `🔔 Lo próximo: ${proximo.r.title} a las ${proximo.t}.`)
-          : h('p', { class: 'muted', style: { margin: 0 } }, 'No queda ningún aviso para hoy. Puedes descansar.')
+        p.anchorPhrase ? h('p', { class: 'p-anchor' }, p.anchorPhrase) : null,
+        h('div', { class: 'p-hero-actions' },
+          h('button', { class: 'btn btn--lg', onClick: vozHero }, '🔊 Escuchar'),
+          h('button', { class: 'btn btn--lg', onClick: () => go('#/orientacion') }, '🕒 ¿Qué día es?')
+        )
       )
     ),
 
-    !moodHoy ? h('div', { class: 'card', style: { marginTop: '1rem' } },
-      h('div', { class: 'card-body stack' },
-        h('b', { style: { fontSize: '1.15rem' } }, '¿Cómo te sientes ahora mismo?'),
-        moodRow(async v => {
-          await api.mood(p.id, v, '');
-          chord();
-          toast('Gracias por contarlo 💚', 'ok');
-          speak('Gracias por contarlo. Tu familia lo verá.');
-          refreshView();
-        })
-      )) : null
+    pendientes.length ? h('div', { class: 'p-alert-bar' },
+      h('span', { class: 'p-alert-ico', 'aria-hidden': 'true' }, '🔔'),
+      h('div', { class: 'grow' },
+        h('b', {}, `Tienes ${pendientes.length} ${pendientes.length === 1 ? 'aviso pendiente' : 'avisos pendientes'}`),
+        h('span', { class: 'muted' }, `Lo primero: ${pendientes[0].title} · ${pendientes[0].time}`)
+      ),
+      h('button', { class: 'btn btn--primary', onClick: () => showReminder(pendientes[0]) }, 'Ver el aviso')
+    ) : null,
+
+    sectionHead('¿Qué quieres hacer?', 'Toca una tarjeta. Siempre puedes volver con «Inicio».'),
+
+    h('div', { class: 'tiles' },
+      tile('🕒', '¿Qué día es?', 'La fecha, la hora y dónde estás', '#/orientacion', { brand: true }),
+      tile('💊', 'Mis medicinas', 'Lo que toca hoy', '#/medicacion', { alert: pendientes.length > 0, badge: pendientes.length ? `${pendientes.length} pendiente${pendientes.length > 1 ? 's' : ''}` : null }),
+      tile('👨‍👩‍👧', '¿Quién es quién?', 'Tu familia y tus amigos', '#/personas'),
+      tile('📖', 'Mis recuerdos', 'Fotos e historias de tu vida', '#/recuerdos'),
+      tile('✅', 'Mi día', pct ? `${pct}% completado` : 'Tu rutina paso a paso', '#/rutina'),
+      tile('🧠', 'Ejercitar la mente', 'Juegos tranquilos, sin prisa', '#/juegos'),
+      tile('🌬️', 'Calmarme', 'Respirar despacio', '#/calma'),
+      tile('🙂', '¿Cómo me siento?', moodHoy ? 'Ya lo has contado hoy' : 'Cuéntaselo a tu familia', '#/animo')
+    ),
+
+    (d.routines || []).length ? h('section', { class: 'p-day' },
+      h('div', { class: 'p-day-head' },
+        h('div', {},
+          h('b', {}, '✅ Tu día de hoy'),
+          h('span', { class: 'muted' }, pct === 100 ? '¡Todo terminado! Muy bien.' : pct ? 'Vas por buen camino.' : 'Cuando quieras, empezamos.')
+        ),
+        h('b', { class: 'p-day-pct' }, `${pct}%`)
+      ),
+      h('div', { class: 'progress', role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'Progreso de tu rutina' },
+        h('div', { class: 'progress-bar', style: { width: pct + '%' } })),
+      h('button', { class: 'btn btn--lg', onClick: () => go('#/rutina') }, pct === 100 ? 'Ver lo que he hecho' : 'Seguir con mi rutina')
+    ) : null,
+
+    !moodHoy ? h('section', { class: 'p-mood' },
+      h('div', { class: 'p-mood-txt' },
+        h('b', {}, '¿Cómo te sientes ahora mismo?'),
+        h('span', { class: 'muted' }, 'Es solo para ti y para tu familia.')
+      ),
+      moodRow(async v => {
+        await api.mood(p.id, v, '');
+        chord();
+        toast('Gracias por contarlo 💚', 'ok');
+        speak('Gracias por contarlo. Tu familia lo verá.');
+        refreshView();
+      })
+    ) : null
   );
 }
 
@@ -202,17 +252,19 @@ export function medicacion() {
           : 'Hoy no tienes avisos.', { force: true })
       }, '🔊 Escuchar')
     }),
-    h('div', { class: 'card', style: { marginBottom: '1rem' } },
+    h('div', { class: 'card summary-card', style: { marginBottom: '1rem' } },
       h('div', { class: 'card-body' },
         h('div', { class: 'between' },
           h('b', { style: { fontSize: '1.2rem' } }, `Hoy: ${hechas} de ${items.length} hechos`),
-          h('span', { class: 'muted' }, fechaLarga())
+          h('span', { class: 'muted hide-sm' }, fechaLarga())
         ),
         h('div', { class: 'progress', style: { marginTop: '.6rem' }, role: 'progressbar', 'aria-valuenow': String(items.length ? Math.round(hechas / items.length * 100) : 0), 'aria-valuemin': '0', 'aria-valuemax': '100' },
           h('div', { class: 'progress-bar', style: { width: `${items.length ? hechas / items.length * 100 : 0}%` } }))
       )
     ),
-    items.length ? h('div', { class: 'stack' }, items.map(item => {
+    items.length ? frag(
+      sectionHead('Tus avisos de hoy', 'Marca «Ya lo he hecho» cuando lo hagas.'),
+      h('div', { class: 'stack' }, items.map(item => {
       const icon = item.r.icon || (item.r.type === 'medicacion' ? '💊' : item.r.type === 'cita' ? '📅' : '🔔');
       return h('div', { class: 'dose-card ' + (item.estado === 'future' ? '' : item.estado) },
         h('span', { class: 'dose-icon', 'aria-hidden': 'true' }, icon),
@@ -237,7 +289,8 @@ export function medicacion() {
             }, '❌ Hoy no') : null
           )
       );
-    })) : h('div', { class: 'empty' }, 'Hoy no tienes ningún aviso. Disfruta del día 🙂')
+    }))
+    ) : emptyState('💊', 'Hoy no tienes avisos', 'Disfruta del día. Si necesitas algo, tu familia está cerca.')
   );
 }
 
@@ -248,6 +301,7 @@ export function personas() {
   const texto = people.map(p => `${p.name} es ${p.relation}. ${p.description || ''}`).join('. ');
   return frag(
     head('¿Quién es quién?', { extra: h('button', { class: 'btn btn--soft', onClick: () => speak(texto || 'Todavía no hay personas guardadas.', { force: true }) }, '🔊 Escuchar') }),
+    sectionHead('Tu familia y tus amigos', 'Toca «Llamar» para hablar o «Escuchar» para oír quién es.'),
     people.length ? h('div', { class: 'people-grid' }, people.map(per =>
       h('article', { class: 'person' },
         avatar(per),
@@ -264,7 +318,9 @@ export function personas() {
           )
         )
       )
-    )) : h('div', { class: 'empty' }, 'Tu familia todavía no ha añadido fotos. Pídeles que las pongan desde su panel.')
+    )) : emptyState('👨‍👩‍👧', 'Todavía no hay fotos aquí',
+      'Tu familia puede añadirlas desde su panel. Mientras tanto, puedes llamarles desde «Pedir ayuda».',
+      h('button', { class: 'btn btn--primary btn--lg', onClick: () => go('#/ayuda') }, '📞 Ir a Pedir ayuda'))
   );
 }
 
@@ -276,6 +332,7 @@ export function recuerdos() {
     head('Mis recuerdos', {
       extra: h('button', { class: 'btn btn--soft', onClick: () => speak(mems.map(m => `${m.year || ''}. ${m.title}. ${m.description}`).join('. ').slice(0, 580) || 'Aún no hay recuerdos.', { force: true }) }, '🔊 Escuchar')
     }),
+    sectionHead('Tus historias', 'Fotos y momentos de tu vida. Puedes escucharlos cuando quieras.'),
     mems.length ? h('div', { class: 'mem-grid' }, mems.map(m =>
       h('article', { class: 'mem-card' },
         m.photo ? h('img', { class: 'mem-photo', src: m.photo, alt: m.title, loading: 'lazy' })
@@ -287,7 +344,9 @@ export function recuerdos() {
           h('button', { class: 'btn', style: { marginTop: 'auto' }, onClick: () => speak(`${m.title}. ${m.year ? 'Año ' + m.year + '.' : ''} ${m.description}`, { force: true }) }, '🔊 Escuchar')
         )
       )
-    )) : h('div', { class: 'empty' }, 'Todavía no hay recuerdos guardados. Tu familia puede añadirlos desde su panel.')
+    )) : emptyState('📖', 'Todavía no hay recuerdos',
+      'Tu familia puede añadir fotos e historias desde su panel. Cada recuerdo ayuda a conversar.',
+      h('button', { class: 'btn btn--primary btn--lg', onClick: () => go('#/juegos') }, '🧠 Mientras tanto, jugar un poco'))
   );
 }
 
@@ -347,8 +406,11 @@ export function rutina() {
 
   return frag(
     head('Mi día', { extra: h('button', { class: 'btn btn--soft', onClick: () => speak('Vamos a hacer tu día paso a paso. Marca cada cosa cuando la termines.', { force: true }) }, '🔊 Escuchar') }),
+    sectionHead('Tu rutina de hoy', 'Marca cada paso cuando lo termines. Sin prisa.'),
     sorted.length ? frag(...sorted.map(r => routineCard(r, logs)))
-      : h('div', { class: 'empty' }, 'Tu familia todavía no ha creado tu rutina del día.')
+      : emptyState('✅', 'Aún no hay rutina para hoy',
+        'Tu familia puede crear tu rutina desde su panel: mañana, tarde y noche, paso a paso.',
+        h('button', { class: 'btn btn--primary btn--lg', onClick: () => go('#/') }, '🏠 Volver al inicio'))
   );
 }
 
@@ -508,7 +570,8 @@ export function ayuda() {
         h('span', { class: 'ic', 'aria-hidden': 'true' }, '👤'),
         h('div', { style: { flex: 1 } }, h('b', { style: { fontSize: '1.2rem' } }, c.name), h('div', { class: 'muted' }, `${c.relation || ''} · ${c.phone}`)),
         h('a', { class: 'btn btn--primary btn--lg', href: 'tel:' + String(c.phone).replace(/\s+/g, '') }, '📞 Llamar')
-      )) : h('div', { class: 'empty' }, 'Tu familia aún no ha añadido teléfonos de contacto.'),
+      )) : emptyState('📞', 'Aún no hay teléfonos guardados',
+        'Tu familia puede añadirlos desde su panel. Mientras tanto, puedes llamar al 112 si es urgente.'),
       h('div', { class: 'help-item' },
         h('span', { class: 'ic', 'aria-hidden': 'true' }, '🚑'),
         h('div', { style: { flex: 1 } }, h('b', { style: { fontSize: '1.2rem' } }, 'Emergencias'), h('div', { class: 'muted' }, 'Policía, ambulancia y bomberos')),

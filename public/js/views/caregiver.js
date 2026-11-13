@@ -63,80 +63,148 @@ export function panel() {
   const d = D(), p = P(), s = S();
   const tomas = estadoTomas();
   const hechas = tomas.filter(t => t.estado === 'tomada').length;
+  const pendientes = tomas.filter(t => t.estado === 'pendiente').length;
   const abiertas = (d.alerts || []).filter(a => a.status !== 'resuelta');
   const loc = s.lastLocation;
   const adherenciaKind = s.adherenceAvg == null ? '' : s.adherenceAvg >= 85 ? 'ok' : s.adherenceAvg >= 60 ? 'warn' : 'bad';
+  const nombre = p.preferredName || p.name || '';
 
   const porJuego = Object.keys(GAME_LABEL).map(g => {
     const rows = (d.games || []).filter(x => x.game === g);
     return { label: GAME_LABEL[g].slice(0, 8), value: rows.length ? Math.round(rows.reduce((a, b) => a + b.score, 0) / rows.length) : null };
   });
 
+  /* Estado general en una frase, lo primero que necesita saber el cuidador */
+  const estado = abiertas.length ? 'atencion' : pendientes ? 'pendiente' : 'bien';
+  const tituloEstado = estado === 'atencion' ? `${nombre} necesita atención`
+    : estado === 'pendiente' ? 'Todo en orden, con tareas pendientes'
+      : 'Todo tranquilo por ahora';
+  const resumenEstado = estado === 'atencion'
+    ? `${abiertas.length} ${abiertas.length === 1 ? 'alerta abierta' : 'alertas abiertas'}${pendientes ? ` y ${pendientes} ${pendientes === 1 ? 'toma pendiente' : 'tomas pendientes'}` : ''}.`
+    : estado === 'pendiente'
+      ? `${pendientes} ${pendientes === 1 ? 'toma pendiente' : 'tomas pendientes'} hoy. Ninguna alerta abierta.`
+      : 'No hay alertas abiertas ni tomas pendientes.';
+
+  const quick = (icon, label, path) => h('button', { class: 'quick-btn', onClick: () => go(path) },
+    h('span', { class: 'quick-ic', 'aria-hidden': 'true' }, icon),
+    h('span', {}, label)
+  );
+
   return frag(
-    head(`Panel de ${p.preferredName || p.name}`, `${fechaLarga()} · última actualización ${hora()}`, [
+    head(`Panel de ${nombre}`, `${fechaLarga()} · actualizado a las ${hora()}`, [
       h('button', { class: 'btn', onClick: () => go('#/recordatorios') }, '＋ Recordatorio'),
-      h('button', { class: 'btn', onClick: () => go('#/informes') }, '📄 Informe'),
-      h('button', { class: 'btn btn--primary', onClick: () => store.refresh({ silent: false }).then(renderMain) }, '🔄 Actualizar')
+      h('button', { class: 'btn', onClick: () => go('#/informes') }, '📄 Informe')
     ]),
 
-    h('div', { class: 'kpis' },
-      kpi('Adherencia 7 días', s.adherenceAvg == null ? '–' : s.adherenceAvg + '%', 'medicación confirmada', adherenciaKind),
-      kpi('Tomas de hoy', `${hechas}/${tomas.length}`, tomas.length ? `${tomas.filter(t => t.estado === 'pendiente').length} pendientes` : 'sin avisos hoy'),
-      kpi('Ánimo medio', s.moodAvg == null ? '–' : s.moodAvg + ' / 5', 'últimos 7 días'),
-      kpi('Ejercicio cognitivo', String(s.gamesCount ?? 0), `${s.gamesMinutes ?? 0} min · media ${s.gamesAvg ?? '–'}`),
-      kpi('Rutina de hoy', (s.routinePct ?? 0) + '%', 'pasos completados'),
-      kpi('Alertas abiertas', String(s.openAlerts ?? 0), s.openAlerts ? 'requieren atención' : 'todo tranquilo', s.openAlerts ? 'bad' : 'ok')
+    h('section', { class: `status-brief status-brief--${estado}` },
+      h('div', { class: 'status-ico', 'aria-hidden': 'true' }, estado === 'atencion' ? '🚨' : estado === 'pendiente' ? '⏳' : '✅'),
+      h('div', { class: 'status-txt' },
+        h('b', {}, tituloEstado),
+        h('p', {}, resumenEstado)
+      ),
+      h('div', { class: 'status-chips' },
+        h('span', { class: 'chip' }, `💊 ${hechas}/${tomas.length} tomas`),
+        h('span', { class: 'chip' }, `🧠 ${s.gamesCount ?? 0} juegos`),
+        h('span', { class: 'chip' }, `✅ ${s.routinePct ?? 0}% rutina`),
+        loc ? h('span', { class: 'chip' }, `📍 señal ${hora(new Date(loc.at))}`) : h('span', { class: 'chip chip--muted' }, '📍 sin señal')
+      ),
+      h('div', { class: 'status-actions' },
+        abiertas.length ? h('button', { class: 'btn btn--primary', onClick: () => go('#/alertas') }, 'Ver alertas') : null,
+        h('button', { class: 'btn', onClick: () => go('#/panel') }, 'Actualizar')
+      )
     ),
 
-    h('div', { class: 'panel-grid' },
-      card('💊 Avisos de hoy', tomas.length ? h('table', { class: 'table' },
-        h('thead', {}, h('tr', {}, h('th', {}, 'Hora'), h('th', {}, 'Aviso'), h('th', {}, 'Estado'))),
-        h('tbody', {}, tomas.map(t => h('tr', {},
-          h('td', { class: 'num' }, t.t),
-          h('td', {}, h('b', {}, t.r.title), t.r.dose ? h('div', { class: 'muted small' }, t.r.dose) : null),
-          h('td', {}, badge(...ESTADO_BADGE[t.estado]))
-        )))
-      ) : h('p', { class: 'muted' }, 'Hoy no hay avisos programados.')),
+    h('div', { class: 'kpis' },
+      kpiRich('Adherencia 7 días', s.adherenceAvg == null ? '–' : s.adherenceAvg + '%', 'medicación confirmada', '💊', s.adherenceAvg, adherenciaKind),
+      kpiRich('Tomas de hoy', `${hechas}/${tomas.length}`, pendientes ? `${pendientes} pendientes ahora` : 'todo confirmado', '✅', tomas.length ? Math.round(hechas / tomas.length * 100) : 100, pendientes ? 'warn' : 'ok'),
+      kpiRich('Ánimo medio', s.moodAvg == null ? '–' : s.moodAvg + '/5', 'últimos 7 días', '🙂', s.moodAvg == null ? null : (s.moodAvg / 5) * 100, ''),
+      kpiRich('Rutina de hoy', (s.routinePct ?? 0) + '%', 'pasos completados', '✅', s.routinePct ?? 0, (s.routinePct ?? 0) >= 100 ? 'ok' : '')
+    ),
 
-      card('🚨 Alertas recientes', abiertas.length ? h('div', { class: 'list' }, abiertas.slice(0, 5).map(a => alertItem(a, true)))
-        : h('p', { class: 'muted' }, 'No hay alertas abiertas. Todo en orden ✅'),
-        h('button', { class: 'btn btn--ghost small', onClick: () => go('#/alertas') }, 'Ver todas')),
+    h('div', { class: 'dash-grid' },
+      /* ── Columna principal ── */
+      h('div', { class: 'dash-main' },
+        card('💊 Avisos de hoy',
+          tomas.length ? h('table', { class: 'table' },
+            h('thead', {}, h('tr', {}, h('th', {}, 'Hora'), h('th', {}, 'Aviso'), h('th', {}, 'Estado'))),
+            h('tbody', {}, tomas.map(t => h('tr', {},
+              h('td', { class: 'num' }, t.t),
+              h('td', {}, h('b', {}, t.r.title), t.r.dose ? h('div', { class: 'muted small' }, t.r.dose) : null),
+              h('td', {}, badge(...ESTADO_BADGE[t.estado]))
+            )))
+          ) : h('p', { class: 'muted' }, 'Hoy no hay avisos programados.'),
+          h('button', { class: 'btn btn--ghost small', onClick: () => go('#/recordatorios') }, 'Gestionar avisos')),
 
-      card('📈 Adherencia a la medicación', frag(
-        barChart((s.adherence || []).map(a => ({ label: a.weekday, value: a.pct, color: a.pct == null ? undefined : a.pct >= 85 ? 'var(--ok)' : a.pct >= 60 ? 'var(--warn)' : 'var(--danger)' }))),
-        h('div', { class: 'legend' }, h('span', {}, h('i', { style: { background: 'var(--ok)' } }), '≥85%'), h('span', {}, h('i', { style: { background: 'var(--warn)' } }), '60–84%'), h('span', {}, h('i', { style: { background: 'var(--danger)' } }), '<60%'))
-      )),
+        card('📈 Adherencia a la medicación', frag(
+          barChart((s.adherence || []).map(a => ({ label: a.weekday, value: a.pct, color: a.pct == null ? undefined : a.pct >= 85 ? 'var(--ok)' : a.pct >= 60 ? 'var(--warn)' : 'var(--danger)' }))),
+          h('div', { class: 'legend' }, h('span', {}, h('i', { style: { background: 'var(--ok)' } }), '≥85%'), h('span', {}, h('i', { style: { background: 'var(--warn)' } }), '60–84%'), h('span', {}, h('i', { style: { background: 'var(--danger)' } }), '<60%'))
+        )),
 
-      card('🙂 Estado de ánimo', frag(
-        lineChart([...(d.moods || [])].slice(0, 7).reverse().map(m => ({ label: fechaCorta(desdeIso(m.date)).slice(0, 6), value: m.value * 20 })), { max: 100 }),
-        h('p', { class: 'muted small' }, '1 = muy mal · 5 = muy bien. La gráfica está en escala de 0 a 100.')
-      )),
+        card('🧠 Rendimiento por juego', frag(
+          barChart(porJuego),
+          h('p', { class: 'muted small' }, 'Puntuación media de las sesiones guardadas.'),
+          h('button', { class: 'btn small', onClick: () => go('#/progreso') }, 'Ver progreso completo')
+        ))
+      ),
 
-      card('📍 Ubicación y zona segura', frag(
-        p.home?.enabled
-          ? h('p', {}, `Zona segura activa: ${p.home.label || 'Casa'} · radio de ${p.home.radius} m.`)
-          : h('p', { class: 'muted' }, 'La zona segura está desactivada. Actívala en Ajustes.'),
-        loc ? frag(
-          h('p', {}, `Última señal: ${fechaCorta(new Date(loc.at))} ${hora(new Date(loc.at))} · `,
-            loc.inside === null ? badge('sin geocerca', 'info') : loc.inside ? badge('Dentro de la zona', 'done') : badge(`Fuera (${loc.distance} m)`, 'new')),
-          mapLink(loc.lat, loc.lng)
-        ) : h('p', { class: 'muted' }, 'Sin señales de ubicación todavía. La persona debe activar «compartir ubicación» en su dispositivo.'),
-        h('div', { style: { marginTop: '.6rem' } }, h('button', { class: 'btn small', onClick: () => go('#/ajustes') }, '⚙️ Configurar zona'))
-      )),
+      /* ── Columna lateral ── */
+      h('div', { class: 'dash-side' },
+        h('section', { class: 'card quick-card' },
+          h('div', { class: 'card-head' }, h('h2', { class: 'card-title' }, '⚡ Acciones rápidas')),
+          h('div', { class: 'quick-grid' },
+            quick('💊', 'Nuevo aviso', '#/recordatorios'),
+            quick('👤', 'Añadir persona', '#/personas'),
+            quick('✅', 'Editar rutina', '#/rutinas'),
+            quick('📝', 'Escribir diario', '#/diario')
+          )
+        ),
 
-      card('🧠 Rendimiento por juego', frag(
-        barChart(porJuego),
-        h('p', { class: 'muted small' }, 'Puntuación media de las sesiones guardadas.'),
-        h('button', { class: 'btn small', onClick: () => go('#/progreso') }, 'Ver progreso completo')
-      )),
+        card('🚨 Alertas recientes',
+          abiertas.length
+            ? h('div', { class: 'list' }, abiertas.slice(0, 3).map(a => alertItem(a, true)))
+            : h('p', { class: 'muted' }, 'No hay alertas abiertas. Todo en orden ✅'),
+          h('button', { class: 'btn btn--ghost small', onClick: () => go('#/alertas') }, 'Ver todas')),
 
-      card('📝 Últimas notas del diario', (d.notes || []).length ? h('div', { class: 'list' }, (d.notes || []).slice(0, 3).map(n =>
-        h('div', { class: 'list-item' }, h('div', { class: 'grow' },
-          h('b', {}, badge(n.category, 'soft'), ' ', h('span', { class: 'muted small' }, fechaCorta(new Date(n.at)))),
-          h('div', {}, n.text.length > 140 ? n.text.slice(0, 140) + '…' : n.text)))
-      )) : h('p', { class: 'muted' }, 'Aún no hay notas.'),
-        h('button', { class: 'btn btn--ghost small', onClick: () => go('#/diario') }, 'Abrir diario'))
+        card('🙂 Estado de ánimo', frag(
+          lineChart([...(d.moods || [])].slice(0, 7).reverse().map(m => ({ label: fechaCorta(desdeIso(m.date)).slice(0, 6), value: m.value * 20 })), { max: 100 }),
+          h('p', { class: 'muted small' }, '1 = muy mal · 5 = muy bien. La gráfica está en escala de 0 a 100.')
+        )),
+
+        card('📍 Ubicación y zona segura', frag(
+          p.home?.enabled
+            ? h('p', {}, `Zona segura activa: ${p.home.label || 'Casa'} · radio de ${p.home.radius} m.`)
+            : h('p', { class: 'muted' }, 'La zona segura está desactivada. Actívala en Ajustes.'),
+          loc ? frag(
+            h('p', {}, `Última señal: ${fechaCorta(new Date(loc.at))} ${hora(new Date(loc.at))} · `,
+              loc.inside === null ? badge('sin geocerca', 'info') : loc.inside ? badge('Dentro de la zona', 'done') : badge(`Fuera (${loc.distance} m)`, 'new')),
+            mapLink(loc.lat, loc.lng)
+          ) : h('p', { class: 'muted' }, 'Sin señales de ubicación todavía. La persona debe activar «compartir ubicación» en su dispositivo.'),
+          h('div', { style: { marginTop: '.6rem' } }, h('button', { class: 'btn small', onClick: () => go('#/ajustes') }, '⚙️ Configurar zona'))
+        )),
+
+        card('📝 Últimas notas del diario', (d.notes || []).length ? h('div', { class: 'list' }, (d.notes || []).slice(0, 3).map(n =>
+          h('div', { class: 'list-item' }, h('div', { class: 'grow' },
+            h('b', {}, badge(n.category, 'soft'), ' ', h('span', { class: 'muted small' }, fechaCorta(new Date(n.at)))),
+            h('div', {}, n.text.length > 140 ? n.text.slice(0, 140) + '…' : n.text)))
+        )) : h('p', { class: 'muted' }, 'Aún no hay notas.'),
+          h('button', { class: 'btn btn--ghost small', onClick: () => go('#/diario') }, 'Abrir diario'))
+      )
     )
+  );
+}
+
+/* KPI con icono y barra fina: se lee de un vistazo */
+function kpiRich(label, value, sub, icon, pctValue, kind = '') {
+  const pct = pctValue == null ? null : Math.max(0, Math.min(100, Math.round(pctValue)));
+  return h('div', { class: 'kpi kpi--rich ' + (kind ? 'kpi--' + kind : '') },
+    h('div', { class: 'kpi-top' },
+      h('span', { class: 'kpi-ico', 'aria-hidden': 'true' }, icon),
+      h('span', { class: 'kpi-label' }, label)
+    ),
+    h('div', { class: 'kpi-value' }, value),
+    sub ? h('div', { class: 'kpi-sub' }, sub) : null,
+    pct == null ? null : h('div', { class: 'kpi-bar', 'aria-hidden': 'true' },
+      h('i', { style: { width: pct + '%' } }))
   );
 }
 
@@ -370,16 +438,20 @@ export function progreso() {
       kpi('Minutos de ejercicio', String(Math.round(games.reduce((a, b) => a + (b.durationMs || 0), 0) / 60000))),
       kpi('Juegos distintos', String(porJuego.filter(x => x.sessions).length) + ' / 6')
     ),
-    h('div', { class: 'panel-grid' },
+    h('div', { class: 'grid2' },
       card('📈 Evolución (últimas 14 sesiones)', frag(lineChart(serie), h('p', { class: 'muted small' }, 'Cada punto es una sesión, de la más antigua a la más reciente.'))),
-      card('🎯 Media por juego', barChart(porJuego.map(x => ({ label: x.label.slice(0, 8), value: x.avg })))),
+      card('🎯 Media por juego', barChart(porJuego.map(x => ({ label: x.label.slice(0, 8), value: x.avg }))))
+    ),
+    h('div', { style: { marginTop: '1rem' } },
       card('📊 Detalle por juego', h('table', { class: 'table' },
         h('thead', {}, h('tr', {}, h('th', {}, 'Juego'), h('th', { class: 'num' }, 'Sesiones'), h('th', { class: 'num' }, 'Media'), h('th', { class: 'num' }, 'Mejor'), h('th', { class: 'num' }, 'Min'))),
         h('tbody', {}, porJuego.map(x => h('tr', {},
           h('td', {}, x.label), h('td', { class: 'num' }, String(x.sessions)),
           h('td', { class: 'num' }, x.avg ?? '–'), h('td', { class: 'num' }, x.best ?? '–'), h('td', { class: 'num' }, String(x.minutes))
         )))
-      )),
+      ))
+    ),
+    h('div', { style: { marginTop: '1rem' } },
       card('🕒 Historial', games.length ? h('div', { style: { maxHeight: '340px', overflowY: 'auto' } }, h('table', { class: 'table' },
         h('thead', {}, h('tr', {}, h('th', {}, 'Fecha'), h('th', {}, 'Juego'), h('th', {}, 'Nivel'), h('th', { class: 'num' }, 'Aciertos'), h('th', { class: 'num' }, 'Puntos'))),
         h('tbody', {}, games.slice(0, 40).map(g => h('tr', {},

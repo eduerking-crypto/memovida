@@ -58,23 +58,99 @@ export function go(path) {
   else location.hash = path;
 }
 
-/* ═════════ Controles de accesibilidad ═════════ */
-function a11yControls() {
+/* ═════════ Controles de accesibilidad ═════════
+   Un solo botón «Aa» abre una hoja con todo explicado en palabras:
+   menos iconos sueltos en la barra y menos dudas para la persona. */
+const FONT_MIN = 0.85, FONT_MAX = 1.9, FONT_STEP = 0.15;
+const pct = s => Math.round((s.fontScale || 1) * 100) + '%';
+
+function a11yButton() {
   const p = store.patient();
   const s = p?.settings || {};
-  const btn = (label, title, pressed, onClick) => h('button', {
-    class: 'icon-btn', title, 'aria-label': title, 'aria-pressed': pressed === undefined ? undefined : String(!!pressed),
-    onClick
-  }, label);
-
-  return h('div', { class: 'row', role: 'group', 'aria-label': 'Accesibilidad' },
-    btn(s.voice === false ? '🔇' : '🔊', s.voice === false ? 'Activar la lectura en voz alta' : 'Silenciar la voz', s.voice !== false,
-      async () => { await store.savePrefs({ voice: s.voice === false }); if (s.voice === false) speak('Voz activada', { force: true }); renderShell(); }),
-    btn('A−', 'Texto más pequeño', undefined, async () => { await store.savePrefs({ fontScale: Math.max(0.85, (s.fontScale || 1) - 0.15) }); renderShell(); }),
-    btn('A+', 'Texto más grande', undefined, async () => { await store.savePrefs({ fontScale: Math.min(1.9, (s.fontScale || 1) + 0.15) }); renderShell(); }),
-    btn('◐', 'Alto contraste', s.contrast, async () => { await store.savePrefs({ contrast: !s.contrast }); renderShell(); }),
-    btn('🌙', 'Modo noche', s.night, async () => { await store.savePrefs({ night: !s.night }); renderShell(); })
+  const activo = s.contrast || s.night || (s.fontScale || 1) !== 1 || s.voice === false;
+  return h('button', {
+    class: 'icon-btn aa-btn' + (activo ? ' aa-btn--on' : ''),
+    title: 'Accesibilidad: voz, tamaño de letra y contraste',
+    'aria-label': 'Accesibilidad: voz, tamaño de letra y contraste',
+    'aria-haspopup': 'dialog',
+    onClick: openA11ySheet
+  },
+    h('span', { 'aria-hidden': 'true', class: 'aa-glyph' }, 'Aa'),
+    h('span', { class: 'sr-only' }, 'Accesibilidad')
   );
+}
+
+export function openA11ySheet() {
+  const body = h('div', { class: 'a11y-sheet' });
+
+  const paint = () => {
+    const p = store.patient();
+    const s = p?.settings || {};
+    const voz = s.voice !== false;
+    const grande = (s.fontScale || 1) > 1;
+    const pequena = (s.fontScale || 1) < 1;
+
+    const toggle = (label, detalle, on, onClick) => h('button', {
+      class: 'a11y-row', 'aria-pressed': String(!!on), onClick
+    },
+      h('span', { class: 'a11y-ico', 'aria-hidden': 'true' }, on ? '✅' : '⬜'),
+      h('span', { class: 'a11y-txt' }, h('b', {}, label), h('small', {}, detalle)),
+      h('span', { class: 'a11y-state' }, on ? 'Sí' : 'No')
+    );
+
+    clear(body);
+    body.append(
+      h('p', { class: 'muted', style: { margin: '0 0 .3rem' } },
+        'Puedes cambiar cómo se ve MemoVida. Se guarda para la próxima vez.'),
+
+      h('div', { class: 'a11y-group', role: 'group', 'aria-label': 'Tamaño de letra' },
+        h('div', { class: 'between' },
+          h('b', { style: { fontSize: '1.1rem' } }, 'Tamaño de la letra'),
+          h('span', { class: 'a11y-value' }, pct(s))
+        ),
+        h('div', { class: 'a11y-size' },
+          h('button', {
+            class: 'btn btn--lg', 'aria-label': 'Texto más pequeño', disabled: pequena,
+            onClick: async () => { await store.savePrefs({ fontScale: Math.max(FONT_MIN, (s.fontScale || 1) - FONT_STEP) }); paint(); }
+          }, 'A−', h('span', { class: 'small' }, 'Más pequeño')),
+          h('button', {
+            class: 'btn btn--lg', 'aria-label': 'Texto normal', disabled: (s.fontScale || 1) === 1,
+            onClick: async () => { await store.savePrefs({ fontScale: 1 }); paint(); }
+          }, 'Aa', h('span', { class: 'small' }, 'Normal')),
+          h('button', {
+            class: 'btn btn--lg', 'aria-label': 'Texto más grande', disabled: grande,
+            onClick: async () => { await store.savePrefs({ fontScale: Math.min(FONT_MAX, (s.fontScale || 1) + FONT_STEP) }); paint(); }
+          }, 'A+', h('span', { class: 'small' }, 'Más grande'))
+        )
+      ),
+
+      toggle('Leer en voz alta', 'La app te va contando lo que aparece en pantalla.', voz,
+        async () => { await store.savePrefs({ voice: !voz }); if (!voz) speak('Voz activada', { force: true }); paint(); }),
+
+      toggle('Letras muy contrastadas', 'Fondo negro y letras claras, más fáciles de ver.', s.contrast,
+        async () => { await store.savePrefs({ contrast: !s.contrast }); paint(); }),
+
+      toggle('Modo noche', 'Colores suaves para la tarde y la noche.', s.night,
+        async () => { await store.savePrefs({ night: !s.night }); paint(); }),
+
+      h('button', {
+        class: 'btn btn--soft btn--block', style: { marginTop: '.4rem' },
+        onClick: async () => {
+          await store.savePrefs({ fontScale: 1, voice: true, contrast: false, night: false });
+          paint(); speak('Todo vuelve a como estaba.', { force: true });
+        }
+      }, '↺ Volver a los ajustes de siempre')
+    );
+  };
+
+  paint();
+  const m = modal({
+    title: 'Accesibilidad',
+    body,
+    actions: [{ label: 'Listo', kind: 'primary', big: store.isPatient(), onClick: close => close() }]
+  });
+  speak('Accesibilidad. Aquí puedes cambiar el tamaño de la letra, la voz y los colores.', { force: true });
+  return m;
 }
 
 async function doLogout() {
@@ -175,67 +251,125 @@ async function checkDue() {
 /* ═════════ Carcasa ═════════ */
 function patientShell() {
   const p = store.patient();
-  const nombre = p?.preferredName || p?.name?.split(' ')[0] || '';
+  const pendientes = (store.state.data?.due || []).length;
   const time = h('div', { class: 'clock-time' }, hora());
   const date = h('div', { class: 'clock-date' }, fechaCorta());
   const tick = () => { time.textContent = hora(); date.textContent = fechaCorta(); };
   setInterval(tick, 1000);
 
   return h('div', { class: 'shell' },
-    h('header', { class: 'topbar' },
+    h('header', { class: 'topbar patient-bar' },
       h('div', { class: 'brand' },
         h('img', { src: 'img/logo.svg', alt: '', width: 38, height: 38 }),
-        h('span', {}, 'MemoVida')
+        h('span', { class: 'brand-name' }, 'MemoVida')
       ),
       h('div', { class: 'clock' }, time, date),
-      h('div', { class: 'row' },
-        a11yControls(),
-        h('button', { class: 'icon-btn', title: 'Cerrar sesión', 'aria-label': 'Cerrar sesión', onClick: doLogout }, '🚪')
+      h('div', { class: 'row topbar-actions' },
+        a11yButton(),
+        h('button', {
+          class: 'icon-btn', title: 'Cerrar sesión', 'aria-label': 'Cerrar sesión', onClick: doLogout
+        }, h('span', { 'aria-hidden': 'true' }, '🚪'))
       )
     ),
     h('div', { class: 'offline-bar', id: 'offline-bar', hidden: true }, '⚠️ Sin conexión. Mostrando los últimos datos guardados.'),
     h('main', { class: 'patient-main', id: 'main', tabindex: '-1' }),
     h('nav', { class: 'bottombar', 'aria-label': 'Navegación principal' },
-      h('button', { class: 'bottom-btn bottom-btn--home', onClick: () => go('#/') }, h('span', { 'aria-hidden': 'true' }, '🏠'), 'Inicio'),
-      h('button', { class: 'bottom-btn bottom-btn--sos', onClick: pedirAyuda }, h('span', { 'aria-hidden': 'true' }, '🆘'), 'Pedir ayuda')
+      h('button', { class: 'bottom-btn bottom-btn--home', 'data-path': '#/', onClick: () => go('#/') },
+        h('span', { class: 'bb-ic', 'aria-hidden': 'true' }, '🏠'), h('span', { class: 'bb-tx' }, 'Inicio')),
+      h('button', { class: 'bottom-btn bottom-btn--meds', 'data-path': '#/medicacion', onClick: () => go('#/medicacion') },
+        h('span', { class: 'bb-ic', 'aria-hidden': 'true' }, '💊'), h('span', { class: 'bb-tx' }, 'Mis medicinas'),
+        pendientes ? h('span', { class: 'bb-badge', 'aria-label': `${pendientes} pendientes` }, String(pendientes)) : null),
+      h('button', { class: 'bottom-btn bottom-btn--sos', onClick: pedirAyuda },
+        h('span', { class: 'bb-ic', 'aria-hidden': 'true' }, '🆘'), h('span', { class: 'bb-tx' }, 'Pedir ayuda'))
     )
   );
 }
 
+const CARE_NAV = [
+  {
+    label: 'Hoy',
+    items: [
+      { path: '#/panel', title: 'Panel de hoy', icon: '📊' },
+      { path: '#/alertas', title: 'Alertas', icon: '🚨' }
+    ]
+  },
+  {
+    label: 'Cuidados',
+    items: [
+      { path: '#/recordatorios', title: 'Medicación y avisos', icon: '💊' },
+      { path: '#/rutinas', title: 'Rutinas del día', icon: '✅' },
+      { path: '#/personas', title: 'Personas cercanas', icon: '👨‍👩‍👧' },
+      { path: '#/recuerdos', title: 'Álbum de recuerdos', icon: '📖' }
+    ]
+  },
+  {
+    label: 'Seguimiento',
+    items: [
+      { path: '#/progreso', title: 'Progreso cognitivo', icon: '🧠' },
+      { path: '#/diario', title: 'Diario del cuidador', icon: '📝' },
+      { path: '#/informes', title: 'Informes', icon: '📄' }
+    ]
+  },
+  {
+    label: 'Configuración',
+    items: [
+      { path: '#/ajustes', title: 'Ajustes y zona segura', icon: '⚙️' },
+      { path: '#/pacientes', title: 'Personas a mi cargo', icon: '🧑‍🦳' }
+    ]
+  }
+];
+
 function careShell() {
   const route = resolveRoute();
   const openAlerts = store.state.data?.stats?.openAlerts || 0;
-  const links = CARE_ROUTES.map(r => h('a', {
-    class: 'side-link', href: r.path, 'aria-current': r.path === route.path ? 'page' : undefined
-  },
-    h('span', { class: 'ic', 'aria-hidden': 'true' }, r.icon),
-    h('span', {}, r.title),
-    r.path === '#/alertas' && openAlerts ? h('span', { class: 'count' }, String(openAlerts)) : null
+  const p = store.patient();
+
+  const groups = CARE_NAV.map(g => h('div', { class: 'care-nav-group' },
+    h('div', { class: 'care-nav-label' }, g.label),
+    g.items.map(r => h('a', {
+      class: 'side-link', href: r.path, 'aria-current': r.path === route.path ? 'page' : undefined
+    },
+      h('span', { class: 'ic', 'aria-hidden': 'true' }, r.icon),
+      h('span', { class: 'side-tx' }, r.title),
+      r.path === '#/alertas' && openAlerts ? h('span', { class: 'count' }, String(openAlerts)) : null
+    ))
   ));
 
   const sel = h('select', {
     'aria-label': 'Persona a mi cargo',
     onChange: async e => { await store.selectPatient(e.target.value); renderShell(); }
-  }, store.state.patients.map(p => h('option', { value: p.id, selected: p.id === store.state.patientId }, p.name)));
+  }, store.state.patients.map(x => h('option', { value: x.id, selected: x.id === store.state.patientId }, x.name)));
 
   return h('div', { class: 'care-shell' },
     h('aside', { class: 'sidebar' },
       h('div', { class: 'brand' }, h('img', { src: 'img/logo.svg', alt: '', width: 34, height: 34 }), h('span', {}, 'MemoVida')),
-      h('nav', { 'aria-label': 'Secciones del cuidador', class: 'stack', style: { gap: '.15rem' } }, links),
+
+      p ? h('div', { class: 'patient-card' },
+        h('div', { class: 'patient-face', 'aria-hidden': 'true' }, (p.preferredName || p.name || '?').slice(0, 1).toUpperCase()),
+        h('div', { class: 'patient-meta' },
+          h('b', {}, p.preferredName || p.name),
+          h('span', {}, `A tu cargo${p.birthDate ? ' · ' + (new Date().getFullYear() - new Date(p.birthDate).getFullYear()) + ' años' : ''}`)
+        )
+      ) : null,
+
+      h('nav', { 'aria-label': 'Secciones del cuidador', class: 'care-nav' }, groups),
+
       h('div', { class: 'side-foot' },
         h('div', {}, store.state.user?.name || ''),
         h('div', { class: 'small' }, 'Cuidador/a'),
-        h('button', { class: 'side-link', style: { paddingLeft: 0 }, onClick: doLogout }, h('span', { class: 'ic' }, '🚪'), 'Cerrar sesión')
+        h('button', { class: 'side-link', onClick: doLogout }, h('span', { class: 'ic' }, '🚪'), 'Cerrar sesión')
       )
     ),
-    h('div', {},
-      h('header', { class: 'topbar' },
-        store.state.patients.length
-          ? h('div', { class: 'patient-select' }, h('span', { 'aria-hidden': 'true' }, '🧑‍🦳'), sel)
-          : h('span', { class: 'muted' }, 'Sin personas vinculadas'),
-        h('div', { class: 'row' },
-          h('button', { class: 'icon-btn', title: 'Actualizar datos', onClick: () => store.refresh({ silent: false }).then(renderMain).catch(() => {}) }, '🔄'),
-          a11yControls()
+    h('div', { class: 'care-body' },
+      h('header', { class: 'topbar care-topbar' },
+        h('div', { class: 'care-topbar-left' },
+          store.state.patients.length
+            ? h('div', { class: 'patient-select' }, h('span', { 'aria-hidden': 'true' }, '🧑‍🦳'), sel)
+            : h('span', { class: 'muted' }, 'Sin personas vinculadas')
+        ),
+        h('div', { class: 'row topbar-actions' },
+          h('button', { class: 'icon-btn', title: 'Actualizar datos', 'aria-label': 'Actualizar datos', onClick: () => store.refresh({ silent: false }).then(renderMain).catch(() => {}) }, '🔄'),
+          a11yButton()
         )
       ),
       h('div', { class: 'offline-bar', id: 'offline-bar', hidden: true }, '⚠️ Sin conexión con el servidor.'),
@@ -275,7 +409,17 @@ export async function renderMain() {
     )));
   }
   main.focus({ preventScroll: true });
+  markNav();
   window.scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
+}
+
+/* Marca la pestaña activa de la barra inferior del paciente */
+function markNav() {
+  const hash = location.hash || '#/';
+  document.querySelectorAll('.bottombar .bottom-btn[data-path]').forEach(b => {
+    if (b.dataset.path === hash) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
 }
 
 function renderAuthScreen() {

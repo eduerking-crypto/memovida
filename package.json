@@ -1,7 +1,7 @@
 {
   "name": "memovida",
-  "version": "1.0.0",
-  "description": "MemoVida — Asistente web para personas con Alzheimer y sus cuidadores. Frontend HTML/CSS/JS + backend Node.js sin dependencias.",
+  "version": "1.1.0",
+  "description": "MemoVida · Asistente web para personas con Alzheimer y sus cuidadores. Frontend HTML/CSS/JS + backend Node.js sin dependencias.",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -11,6 +11,7 @@
     "reset": "node -e \"import('node:fs').then(fs=>fs.rmSync('data/db.json',{force:true}))\"",
     "demo": "node tools/build-demo.mjs",
     "demo:serve": "node tools/serve-demo.mjs",
+    "shots": "node tools/shots.mjs",
     "apk": "node tools/build-demo.mjs && node tools/build-apk.mjs"
   },
   "engines": {

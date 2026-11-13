@@ -182,7 +182,12 @@ export function crudScreen({ coll, title, icon, subtitle, fields, items, renderI
     const list = currentItems();
     mount(listWrap, list.length
       ? h('div', { class: 'list' }, list.map(it => renderItem(it, { edit: () => openForm(it), remove: () => del(it) })))
-      : h('div', { class: 'empty' }, query ? 'Nada coincide con la búsqueda.' : emptyText));
+      : h('div', { class: 'empty' },
+        h('div', { class: 'empty-ico', 'aria-hidden': 'true' }, query ? '🔍' : icon),
+        h('b', { class: 'empty-title' }, query ? 'Sin resultados' : 'Aún no hay nada aquí'),
+        h('p', { class: 'empty-text' }, query ? 'Prueba con otra palabra.' : emptyText),
+        query ? null : h('button', { class: 'btn btn--primary', onClick: () => openForm() }, '＋ ' + addLabel)
+      ));
   }
   paint();
 
