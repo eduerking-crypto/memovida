@@ -8,7 +8,10 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node test/smoke.mjs",
-    "reset": "node -e \"import('node:fs').then(fs=>fs.rmSync('data/db.json',{force:true}))\""
+    "reset": "node -e \"import('node:fs').then(fs=>fs.rmSync('data/db.json',{force:true}))\"",
+    "demo": "node tools/build-demo.mjs",
+    "demo:serve": "node tools/serve-demo.mjs",
+    "apk": "node tools/build-demo.mjs && node tools/build-apk.mjs"
   },
   "engines": {
     "node": ">=18"

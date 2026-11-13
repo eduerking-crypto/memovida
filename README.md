@@ -14,6 +14,15 @@ Aplicación web completa y accesible: orientación temporal, recordatorios de me
 > ⚠️ MemoVida es una herramienta de apoyo, **no** un producto sanitario ni un sustituto del criterio médico.
 > No introduzcas datos reales de salud en la demo pública: la demo guarda todo **en tu propio navegador**.
 
+## 📸 Capturas
+
+| Modo paciente | Modo cuidador |
+|---|---|
+| ![Inicio del paciente](test/capturas/02-paciente-inicio.png) | ![Panel del cuidador](test/capturas/27-cuidador-panel.png) |
+| ![Medicación](test/capturas/04-medicacion.png) | ![Informes](test/capturas/35-informes.png) |
+| ![Juegos](test/capturas/08-juegos.png) | ![Progreso cognitivo](test/capturas/33-progreso.png) |
+| ![Móvil](test/capturas/25-movil-inicio.png) | ![Móvil cuidador](test/capturas/41-movil-cuidador.png) |
+
 ---
 
 ## 🚀 Lo que puedes hacer

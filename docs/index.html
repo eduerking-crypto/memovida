@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MemoVida · Apoyo para personas con Alzheimer y sus cuidadores</title>
+<meta name="description" content="MemoVida: orientación, recordatorios de medicación, reconocimiento de familiares, recuerdos, rutinas, estimulación cognitiva y seguridad para personas con Alzheimer.">
+<meta name="theme-color" content="#1f6f5c">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<link rel="apple-touch-icon" href="img/logo.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-mode="login">
+  <a class="skip-link" href="#main">Saltar al contenido principal</a>
+
+  <div id="app">
+    <div class="boot" role="status">
+      <img src="img/logo.svg" alt="" width="72" height="72">
+      <p>Preparando MemoVida…</p>
+    </div>
+  </div>
+
+  <!-- Anuncios para lectores de pantalla -->
+  <div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  <!-- Avisos visuales -->
+  <div id="toasts" class="toast-wrap" role="region" aria-label="Avisos"></div>
+  <!-- Ventanas de diálogo -->
+  <div id="modals"></div>
+
+  <noscript>
+    <div class="noscript">MemoVida necesita JavaScript para funcionar. Actívalo en tu navegador, por favor.</div>
+  </noscript>
+
+  <script src="js/demo-boot.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
